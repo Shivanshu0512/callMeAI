@@ -1,8 +1,8 @@
+
 "use client"
 
-import type React from "react"
+import React, { useState } from "react"
 
-import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -35,6 +35,7 @@ const DAYS_OF_WEEK = [
 
 const TIMEZONES = [
   "UTC",
+  "Asia/Kolkata", // Indian Standard Time
   "America/New_York",
   "America/Chicago",
   "America/Denver",
@@ -48,13 +49,39 @@ const TIMEZONES = [
 export function CreateCallScheduleDialog({ children }: CreateCallScheduleDialogProps) {
   const [open, setOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  // Default to Asia/Kolkata if user's timezone is India, else use browser default
+  const defaultTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone === "Asia/Kolkata"
+    ? "Asia/Kolkata"
+    : Intl.DateTimeFormat().resolvedOptions().timeZone
   const [formData, setFormData] = useState({
     name: "",
     time_of_day: "",
-    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    timezone: defaultTimezone,
     days_of_week: [] as number[],
   })
+  const [userPhone, setUserPhone] = useState<string | null>(null)
+  const [profileLoading, setProfileLoading] = useState(true)
   const router = useRouter()
+
+  // Fetch user profile on open
+  React.useEffect(() => {
+    if (open) {
+      (async () => {
+        setProfileLoading(true)
+        const supabase = createClient()
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user) {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("phone_number")
+            .eq("id", user.id)
+            .single()
+          setUserPhone(profile?.phone_number || null)
+        }
+        setProfileLoading(false)
+      })()
+    }
+  }, [open])
 
   const handleDayToggle = (dayId: number, checked: boolean) => {
     if (checked) {
@@ -111,6 +138,13 @@ export function CreateCallScheduleDialog({ children }: CreateCallScheduleDialogP
           <DialogTitle>Create Call Schedule</DialogTitle>
           <DialogDescription>Set up when CallMeAI should call you.</DialogDescription>
         </DialogHeader>
+        {profileLoading ? (
+          <div className="text-center py-8">Loading profile...</div>
+        ) : !userPhone ? (
+          <div className="bg-yellow-100 text-yellow-800 rounded p-4 text-center mb-4">
+            <strong>Mobile number required:</strong> Please add your mobile number in your profile settings before scheduling a call.
+          </div>
+        ) : (
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-2">
             <Label htmlFor="name">Schedule Name</Label>
@@ -180,6 +214,7 @@ export function CreateCallScheduleDialog({ children }: CreateCallScheduleDialogP
             </Button>
           </div>
         </form>
+        )}
       </DialogContent>
     </Dialog>
   )

@@ -166,12 +166,13 @@ Open [http://localhost:3000](http://localhost:3000) in your browser to see CallM
 - **Task Management**: `components/task-list.tsx`, `components/create-task-dialog.tsx`
 - **Call Scheduling**: `components/call-schedule-list.tsx`, `components/create-call-schedule-dialog.tsx`
 - **Progress Tracking**: `components/progress-charts.tsx`, `components/progress-stats.tsx`
-- **Voice Integration**: `components/voice-settings-dialog.tsx`, `components/call-simulator.tsx`
+  
+Note: Voice/call implementation was migrated to Bland.ai integration. Old internal voice-generation components have been removed.
 
 ### API Routes
 
-- `/api/voice/generate` - Generate AI voice samples
-- `/api/voice/call` - Initiate AI calls
+- `/api/bland/call` - Initiate phone calls via Bland.ai
+- `/api/bland/webhook` - Bland.ai webhook receiver for call results
 - `/api/reports/generate` - Generate weekly reports
 
 ## 🚀 Deployment

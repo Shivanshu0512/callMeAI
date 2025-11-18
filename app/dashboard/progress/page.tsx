@@ -3,10 +3,8 @@ import { createClient } from "@/lib/supabase/server"
 import { ProgressCharts } from "@/components/progress-charts"
 import { TaskProgressList } from "@/components/task-progress-list"
 import { ProgressStats } from "@/components/progress-stats"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Target, Download } from "lucide-react"
-import Link from "next/link"
+import { Target, Download, TrendingUp, Zap, Award } from "lucide-react"
 
 export default async function ProgressPage() {
   const supabase = await createClient()
@@ -47,44 +45,45 @@ export default async function ProgressPage() {
     .order("scheduled_at", { ascending: true })
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+    <div className="min-h-screen bg-black text-white overflow-hidden">
+      {/* Animated Background */}
+      <div className="fixed inset-0 z-0">
+        <div className="absolute inset-0 bg-gradient-to-br from-purple-900/20 via-black to-cyan-900/20" />
+        <div className="absolute top-1/2 left-1/3 w-96 h-96 bg-gradient-to-br from-purple-500/10 to-transparent rounded-full blur-3xl opacity-30 animate-pulse" />
+        <div className="absolute bottom-1/4 right-1/3 w-96 h-96 bg-gradient-to-bl from-cyan-500/10 to-transparent rounded-full blur-3xl opacity-30 animate-pulse" />
+      </div>
+
       {/* Header */}
-      <header className="border-b border-gray-200/50 dark:border-gray-700/50 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm">
+      <header className="fixed top-0 w-full z-50 backdrop-blur-md bg-black/30 border-b border-white/10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
-            <div className="flex items-center space-x-4">
-              <Link href="/dashboard" className="flex items-center space-x-2">
-                <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                  <Target className="w-5 h-5 text-white" />
-                </div>
-                <span className="text-xl font-bold text-gray-900 dark:text-white">CallMeAI</span>
-              </Link>
-              <nav className="flex space-x-4">
-                <Link
-                  href="/dashboard"
-                  className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
-                >
-                  Dashboard
-                </Link>
-                <Link
-                  href="/dashboard/calls"
-                  className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
-                >
-                  AI Calls
-                </Link>
-                <span className="text-blue-600 dark:text-blue-400 font-medium">Progress</span>
-              </nav>
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-cyan-500 rounded-lg flex items-center justify-center">
+                <Target className="w-6 h-6 text-white" />
+              </div>
+              <span className="text-2xl font-black bg-gradient-to-r from-purple-400 to-cyan-400 bg-clip-text text-transparent">
+                CallMeAI
+              </span>
+              <span className="text-gray-400 ml-4">/ Progress</span>
             </div>
             <div className="flex items-center space-x-4">
-              <Button variant="outline" size="sm">
+              <Button 
+                variant="ghost" 
+                size="sm"
+                className="text-gray-300 hover:text-white hover:bg-white/10 transition-colors"
+              >
                 <Download className="w-4 h-4 mr-2" />
-                Export Data
+                Export
               </Button>
-              <span className="text-sm text-gray-600 dark:text-gray-300">
-                Welcome back, {profile?.full_name || "User"}!
+              <span className="text-sm text-gray-300">
+                Welcome back, <span className="font-semibold text-white">{profile?.full_name || "User"}</span>!
               </span>
               <form action="/auth/signout" method="post">
-                <Button variant="ghost" type="submit" className="text-gray-600 dark:text-gray-300">
+                <Button 
+                  variant="ghost" 
+                  type="submit" 
+                  className="text-gray-300 hover:text-white hover:bg-white/10 transition-colors"
+                >
                   Sign Out
                 </Button>
               </form>
@@ -93,38 +92,73 @@ export default async function ProgressPage() {
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Page Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Progress Dashboard</h1>
-          <p className="text-gray-600 dark:text-gray-300">
-            Track your CallMeAI journey and see how you're building lasting habits
-          </p>
+      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-16">
+        {/* Welcome Section */}
+        <div className="mb-12">
+          <h1 className="text-5xl md:text-6xl font-black mb-2">
+            <span className="text-white">Your Progress</span>
+            <span className="block bg-gradient-to-r from-cyan-400 to-pink-400 bg-clip-text text-transparent">
+              Dashboard
+            </span>
+          </h1>
+          <p className="text-xl text-gray-400 mt-4">Track your journey and celebrate your wins</p>
         </div>
 
         {/* Progress Stats */}
-        <ProgressStats tasks={tasks || []} responses={responses || []} callLogs={callLogs || []} />
+        <div className="mb-12">
+          <ProgressStats tasks={tasks || []} responses={responses || []} callLogs={callLogs || []} />
+        </div>
 
         {/* Main Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Charts Section */}
           <div className="lg:col-span-2 space-y-6">
-            <ProgressCharts tasks={tasks || []} responses={responses || []} callLogs={callLogs || []} />
+            <div className="rounded-2xl border border-white/20 bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-sm p-8 overflow-hidden">
+              <h2 className="text-2xl font-black text-white mb-6">Your Trends</h2>
+              <ProgressCharts tasks={tasks || []} responses={responses || []} callLogs={callLogs || []} />
+            </div>
+
+            {/* Achievement Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="group relative rounded-2xl overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-br from-pink-500/20 to-pink-600/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                <div className="relative p-8 bg-gradient-to-br from-white/10 to-white/5 border border-white/20 backdrop-blur-sm hover:border-pink-400/50 transition-all duration-300 rounded-2xl">
+                  <div className="flex items-start justify-between mb-4">
+                    <div>
+                      <p className="text-sm text-gray-400 mb-2">Consistency Streak</p>
+                      <h3 className="text-3xl font-black text-white">7 Days</h3>
+                      <p className="text-xs text-gray-500 mt-2">Keep it up! 🔥</p>
+                    </div>
+                    <div className="p-3 bg-pink-500/20 rounded-xl">
+                      <Zap className="w-6 h-6 text-pink-400" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="group relative rounded-2xl overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/20 to-cyan-600/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                <div className="relative p-8 bg-gradient-to-br from-white/10 to-white/5 border border-white/20 backdrop-blur-sm hover:border-cyan-400/50 transition-all duration-300 rounded-2xl">
+                  <div className="flex items-start justify-between mb-4">
+                    <div>
+                      <p className="text-sm text-gray-400 mb-2">Best Achievement</p>
+                      <h3 className="text-3xl font-black text-white">95%</h3>
+                      <p className="text-xs text-gray-500 mt-2">Task completion rate 🏆</p>
+                    </div>
+                    <div className="p-3 bg-cyan-500/20 rounded-xl">
+                      <Award className="w-6 h-6 text-cyan-400" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
-          {/* Task Progress List */}
-          <div>
-            <Card className="border-0 shadow-lg bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm">
-              <CardHeader>
-                <CardTitle className="text-lg text-gray-900 dark:text-white">Task Performance</CardTitle>
-                <CardDescription className="text-gray-600 dark:text-gray-300">
-                  Last 7 days completion rates
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <TaskProgressList tasks={tasks || []} responses={responses || []} />
-              </CardContent>
-            </Card>
+          {/* Task Performance */}
+          <div className="rounded-2xl border border-white/20 bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-sm p-8">
+            <h3 className="text-xl font-black text-white mb-6">Task Performance</h3>
+            <p className="text-xs text-gray-500 mb-6">Last 7 days completion rates</p>
+            <TaskProgressList tasks={tasks || []} responses={responses || []} />
           </div>
         </div>
       </div>

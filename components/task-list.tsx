@@ -1,7 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
@@ -37,6 +36,7 @@ interface TaskListProps {
 export function TaskList({ tasks, todayResponses }: TaskListProps) {
   const [editingTask, setEditingTask] = useState<Task | null>(null)
   const [loggingTask, setLoggingTask] = useState<Task | null>(null)
+  const [hoveredTaskId, setHoveredTaskId] = useState<string | null>(null)
   const router = useRouter()
 
   const deleteTask = async (taskId: string) => {
@@ -62,11 +62,11 @@ export function TaskList({ tasks, todayResponses }: TaskListProps) {
 
   const getCategoryColor = (category: string) => {
     const colors = {
-      health: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
-      fitness: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
-      productivity: "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400",
-      learning: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400",
-      general: "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300",
+      health: "bg-green-500/20 text-green-400 border-green-500/30",
+      fitness: "bg-blue-500/20 text-blue-400 border-blue-500/30",
+      productivity: "bg-purple-500/20 text-purple-400 border-purple-500/30",
+      learning: "bg-orange-500/20 text-orange-400 border-orange-500/30",
+      general: "bg-gray-500/20 text-gray-400 border-gray-500/30",
     }
     return colors[category as keyof typeof colors] || colors.general
   }
@@ -74,40 +74,62 @@ export function TaskList({ tasks, todayResponses }: TaskListProps) {
   if (tasks.length === 0) {
     return (
       <div className="text-center py-12">
-        <Target className="w-12 h-12 text-gray-400 dark:text-gray-600 mx-auto mb-4" />
-        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No tasks yet</h3>
-  <p className="text-gray-600 dark:text-gray-400 mb-4">Create your first CallMeAI task to get started</p>
+        <div className="w-16 h-16 bg-gradient-to-br from-purple-500/20 to-cyan-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+          <Target className="w-8 h-8 text-purple-400" />
+        </div>
+        <h3 className="text-lg font-semibold text-white mb-2">No tasks yet</h3>
+        <p className="text-gray-400 text-sm">Create your first CallMeAI task to get started</p>
       </div>
     )
   }
 
   return (
-    <div className="space-y-4">
-      {tasks.map((task) => {
+    <div className="space-y-3">
+      {tasks.map((task, index) => {
         const progress = getTaskProgress(task)
         const completed = isTaskCompleted(task)
 
         return (
-          <Card key={task.id} className="border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
-            <CardContent className="p-4">
+          <div
+            key={task.id}
+            className="group rounded-xl border border-white/10 bg-gradient-to-r from-white/5 to-white/[0.02] backdrop-blur-sm hover:border-white/20 transition-all duration-300 overflow-hidden hover:shadow-lg hover:shadow-purple-500/10"
+            style={{
+              animation: `fadeIn 0.5s ease-out ${index * 0.05}s both`,
+            }}
+            onMouseEnter={() => setHoveredTaskId(task.id)}
+            onMouseLeave={() => setHoveredTaskId(null)}
+          >
+            <div className="p-4">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
+                  {/* Task Header */}
                   <div className="flex items-center space-x-3 mb-2">
-                    {completed ? (
-                      <CheckCircle2 className="w-5 h-5 text-green-600 dark:text-green-400" />
-                    ) : (
-                      <Circle className="w-5 h-5 text-gray-400 dark:text-gray-600" />
-                    )}
-                    <h3 className="font-medium text-gray-900 dark:text-white">{task.title}</h3>
-                    <Badge className={getCategoryColor(task.category)}>{task.category}</Badge>
+                    <div className="relative">
+                      {completed ? (
+                        <div className="relative">
+                          <CheckCircle2 className="w-5 h-5 text-green-400 animate-pulse" />
+                          <div className="absolute inset-0 bg-green-400/20 rounded-full blur-md" />
+                        </div>
+                      ) : (
+                        <Circle className="w-5 h-5 text-gray-500 group-hover:text-purple-400 transition-colors" />
+                      )}
+                    </div>
+                    <h3 className="font-semibold text-white group-hover:text-transparent group-hover:bg-gradient-to-r group-hover:from-purple-400 group-hover:to-cyan-400 group-hover:bg-clip-text transition-all duration-300">
+                      {task.title}
+                    </h3>
+                    <Badge className={`${getCategoryColor(task.category)} border text-xs font-medium`}>
+                      {task.category}
+                    </Badge>
                   </div>
 
+                  {/* Description */}
                   {task.description && (
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-3 ml-8">{task.description}</p>
+                    <p className="text-sm text-gray-400 mb-3 ml-8 group-hover:text-gray-300 transition-colors">{task.description}</p>
                   )}
 
+                  {/* Task Details */}
                   <div className="ml-8 space-y-2">
-                    <div className="flex items-center space-x-4 text-sm text-gray-600 dark:text-gray-400">
+                    <div className="flex items-center space-x-4 text-sm text-gray-500 group-hover:text-gray-400 transition-colors">
                       <div className="flex items-center space-x-1">
                         <Clock className="w-4 h-4" />
                         <span>{task.target_frequency}</span>
@@ -122,37 +144,61 @@ export function TaskList({ tasks, todayResponses }: TaskListProps) {
                       )}
                     </div>
 
+                    {/* Progress Bar */}
                     {task.target_value && (
                       <div className="space-y-1">
                         <div className="flex justify-between text-sm">
-                          <span className="text-gray-600 dark:text-gray-400">Today's Progress</span>
-                          <span className="text-gray-900 dark:text-white font-medium">{Math.round(progress)}%</span>
+                          <span className="text-gray-500">Today's Progress</span>
+                          <span className="text-white font-semibold">{Math.round(progress)}%</span>
                         </div>
-                        <Progress value={progress} className="h-2" />
+                        <div className="h-2 bg-white/5 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full rounded-full transition-all duration-500 ${
+                              progress >= 100
+                                ? "bg-gradient-to-r from-green-400 to-emerald-400"
+                                : "bg-gradient-to-r from-purple-400 to-cyan-400"
+                            }`}
+                            style={{ width: `${progress}%` }}
+                          />
+                        </div>
                       </div>
                     )}
                   </div>
                 </div>
 
-                <div className="flex items-center space-x-2">
+                {/* Action Buttons */}
+                <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-y-2 group-hover:translate-y-0">
                   <LogTaskDialog task={task} onSuccess={() => router.refresh()}>
-                    <Button size="sm" variant="outline">
-                      Log Progress
+                    <Button 
+                      size="sm" 
+                      className="bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-500 hover:to-cyan-500 text-white border-0 font-semibold transform hover:scale-110 transition-all"
+                    >
+                      Log
                     </Button>
                   </LogTaskDialog>
 
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="sm">
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        className="text-gray-400 hover:text-white hover:bg-white/10 transition-all"
+                      >
                         <MoreHorizontal className="w-4 h-4" />
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => setEditingTask(task)}>
+                    <DropdownMenuContent align="end" className="bg-gray-900/95 border-white/10">
+                      <DropdownMenuItem 
+                        onClick={() => setEditingTask(task)}
+                        className="cursor-pointer hover:bg-white/10 text-gray-300 hover:text-white transition-colors"
+                      >
                         <Edit className="w-4 h-4 mr-2" />
                         Edit
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => deleteTask(task.id)} className="text-red-600 dark:text-red-400">
+                      <DropdownMenuItem 
+                        onClick={() => deleteTask(task.id)} 
+                        className="cursor-pointer hover:bg-red-500/10 text-red-400 hover:text-red-300 transition-colors"
+                      >
                         <Trash2 className="w-4 h-4 mr-2" />
                         Delete
                       </DropdownMenuItem>
@@ -160,8 +206,8 @@ export function TaskList({ tasks, todayResponses }: TaskListProps) {
                   </DropdownMenu>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         )
       })}
 
@@ -176,6 +222,19 @@ export function TaskList({ tasks, todayResponses }: TaskListProps) {
           }}
         />
       )}
+
+      <style jsx>{`
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+            transform: translateY(10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+      `}</style>
     </div>
   )
 }
