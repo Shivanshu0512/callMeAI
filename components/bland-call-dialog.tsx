@@ -11,6 +11,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { CallLiveLogs } from "@/components/call-live-logs"
 import { Phone, Loader2 } from "lucide-react"
 
 interface BlandCallDialogProps {
@@ -50,12 +51,8 @@ export function BlandCallDialog({ children, scheduleId, scheduleName }: BlandCal
       }
 
       setCallId(data.callId)
-      setCallStatus("completed")
-
-      // Auto-close after 3 seconds on success
-      setTimeout(() => {
-        setOpen(false)
-      }, 3000)
+      // keep status as calling while the call is live; stream will update status via realtime
+      setCallStatus("calling")
     } catch (err: any) {
       setError(err.message)
       setCallStatus("error")
@@ -130,18 +127,10 @@ export function BlandCallDialog({ children, scheduleId, scheduleName }: BlandCal
             </Card>
           )}
 
-          {callStatus === "completed" && (
-            <Card className="bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-lg text-green-700 dark:text-green-400">Call Initiated!</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <p className="text-sm text-green-700 dark:text-green-300">
-                  Your call has been scheduled. You'll receive a call shortly on your registered number. Closing in a few seconds...
-                </p>
-                {callId && <p className="text-xs text-gray-500">Call ID: {callId}</p>}
-              </CardContent>
-            </Card>
+          {callId && (
+            <div>
+              <CallLiveLogs callId={callId} />
+            </div>
           )}
 
           {callStatus === "error" && (
