@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server"
 import { CallScheduleList } from "@/components/call-schedule-list"
 import { CreateCallScheduleDialog } from "@/components/create-call-schedule-dialog"
 import { BlandCallDialog } from "@/components/bland-call-dialog"
+import { CallLogsList } from "@/components/call-logs-list"
 import { PhoneNumberSettings } from "@/components/phone-number-settings"
 import { Button } from "@/components/ui/button"
 import { Plus, Phone, Calendar, Clock, Target, Settings, Check, AlertCircle, ChevronRight } from "lucide-react"
@@ -207,38 +208,7 @@ export default async function CallsPage() {
               </div>
             </div>
 
-            {/* Recent Calls */}
-            {recentCalls && recentCalls.length > 0 && (
-              <div className="rounded-2xl border border-white/20 bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-sm p-8">
-                <h3 className="text-xl font-black text-white mb-6">Recent Calls</h3>
-                <div className="space-y-4">
-                  {recentCalls.slice(0, 3).map((call) => (
-                    <div
-                      key={call.id}
-                      className="p-4 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 transition-all"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-semibold text-white">
-                            {new Date(call.scheduled_at).toLocaleDateString()}
-                          </p>
-                          <p className="text-xs text-gray-500 capitalize mt-1">{call.call_status}</p>
-                        </div>
-                        <div
-                          className={`w-3 h-3 rounded-full ${
-                            call.call_status === "completed"
-                              ? "bg-green-500"
-                              : call.call_status === "failed"
-                                ? "bg-red-500"
-                                : "bg-yellow-500"
-                          }`}
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+            <CallLogsList />
 
             {/* Call Tips */}
             <div className="rounded-2xl border border-white/20 bg-gradient-to-br from-cyan-500/10 to-purple-500/10 backdrop-blur-sm p-8">

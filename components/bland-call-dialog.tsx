@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
+import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -60,6 +61,34 @@ export function BlandCallDialog({ children, scheduleId, scheduleName }: BlandCal
       setIsLoading(false)
     }
   }
+
+  // Subscribe to realtime updates for this call to reflect status/transcript
+  useEffect(() => {
+    if (!callId) return
+    const supabase = createClient()
+
+    const channel = supabase
+      .channel('public:call_logs_dialog')
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'call_logs', filter: `id=eq.${callId}` },
+        (payload: any) => {
+          const newRow = payload.new
+          if (newRow.call_status === 'completed') setCallStatus('completed')
+          else if (newRow.call_status === 'failed') setCallStatus('error')
+          else if (newRow.call_status === 'in_progress' || newRow.call_status === 'initiated') setCallStatus('calling')
+        }
+      )
+      .subscribe()
+
+    return () => {
+      try {
+        channel.unsubscribe()
+      } catch (e) {
+        // ignore
+      }
+    }
+  }, [callId])
 
   const resetDialog = () => {
     setCallStatus("idle")

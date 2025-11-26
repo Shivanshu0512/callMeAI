@@ -91,6 +91,7 @@ CREATE TABLE IF NOT EXISTS public.call_logs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   schedule_id UUID REFERENCES public.call_schedules(id) ON DELETE SET NULL,
+  provider_call_id TEXT, -- the id returned by the provider (Bland.ai) for matching webhooks
   call_status TEXT NOT NULL DEFAULT 'scheduled', -- 'scheduled', 'completed', 'failed', 'missed'
   call_duration INTEGER, -- in seconds
   scheduled_at TIMESTAMP WITH TIME ZONE NOT NULL,
@@ -127,3 +128,33 @@ CREATE POLICY "weekly_reports_select_own" ON public.weekly_reports FOR SELECT US
 CREATE POLICY "weekly_reports_insert_own" ON public.weekly_reports FOR INSERT WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "weekly_reports_update_own" ON public.weekly_reports FOR UPDATE USING (auth.uid() = user_id);
 CREATE POLICY "weekly_reports_delete_own" ON public.weekly_reports FOR DELETE USING (auth.uid() = user_id);
+
+-- New table for call transcript events (streaming chunks)
+CREATE TABLE IF NOT EXISTS public.call_log_events (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  call_id UUID NOT NULL REFERENCES public.call_logs(id) ON DELETE CASCADE,
+  speaker TEXT, -- e.g., 'agent' or 'user'
+  text TEXT NOT NULL,
+  provider_event_id TEXT, -- optional provider event id to prevent duplicates
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Enable RLS on call_log_events
+ALTER TABLE public.call_log_events ENABLE ROW LEVEL SECURITY;
+
+-- Create RLS policies for call_log_events
+CREATE POLICY "call_log_events_select_own" ON public.call_log_events FOR SELECT USING (
+  EXISTS (
+    SELECT 1 FROM public.call_logs cl WHERE cl.id = call_log_events.call_id AND auth.uid() = cl.user_id
+  )
+);
+CREATE POLICY "call_log_events_insert_own" ON public.call_log_events FOR INSERT WITH CHECK (
+  EXISTS (
+    SELECT 1 FROM public.call_logs cl WHERE cl.id = new.call_id AND auth.uid() = cl.user_id
+  )
+);
+CREATE POLICY "call_log_events_delete_own" ON public.call_log_events FOR DELETE USING (
+  EXISTS (
+    SELECT 1 FROM public.call_logs cl WHERE cl.id = call_log_events.call_id AND auth.uid() = cl.user_id
+  )
+);

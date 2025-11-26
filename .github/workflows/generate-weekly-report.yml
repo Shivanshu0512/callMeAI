@@ -1,0 +1,32 @@
+name: Generate Weekly Reports
+
+on:
+  schedule:
+    # Runs every Monday at 06:00 UTC
+    - cron: '0 6 * * 1'
+  workflow_dispatch: {}
+
+jobs:
+  generate-reports:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate weekly reports via API
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          if [ -z "$APP_URL" ] || [ -z "$SERVICE_ROLE_KEY" ]; then
+            echo "Missing secrets: APP_URL or SUPABASE_SERVICE_ROLE_KEY"
+            exit 1
+          fi
+
+          # Compute last week's start and end (YYYY-MM-DD)
+          WEEK_END=$(date -u -d 'last sunday' +%F)
+          WEEK_START=$(date -u -d "$WEEK_END -6 days" +%F)
+
+          echo "Generating reports for $WEEK_START -> $WEEK_END"
+
+          curl -X POST "$APP_URL/api/reports/generate/service" \
+            -H "Content-Type: application/json" \
+            -H "x-service-role: $SERVICE_ROLE_KEY" \
+            -d '{"weekStart":"'

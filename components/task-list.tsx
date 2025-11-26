@@ -48,6 +48,21 @@ export function TaskList({ tasks, todayResponses }: TaskListProps) {
     }
   }
 
+  const toggleTaskActive = async (taskId: string, currentState: boolean) => {
+    const supabase = createClient()
+    const action = currentState ? false : true
+
+    const confirmMsg = currentState
+      ? "Are you sure you want to disable this task? You can re-enable it later."
+      : "Are you sure you want to enable this task?"
+
+    if (!window.confirm(confirmMsg)) return
+
+    const { error } = await supabase.from("tasks").update({ is_active: action }).eq("id", taskId)
+
+    if (!error) router.refresh()
+  }
+
   const getTaskProgress = (task: Task) => {
     const response = todayResponses.find((r) => r.task_id === task.id)
     if (!response || !task.target_value) return 0
@@ -92,7 +107,9 @@ export function TaskList({ tasks, todayResponses }: TaskListProps) {
         return (
           <div
             key={task.id}
-            className="group rounded-xl border border-white/10 bg-gradient-to-r from-white/5 to-white/[0.02] backdrop-blur-sm hover:border-white/20 transition-all duration-300 overflow-hidden hover:shadow-lg hover:shadow-purple-500/10"
+            className={`group rounded-xl border border-white/10 bg-gradient-to-r from-white/5 to-white/[0.02] backdrop-blur-sm hover:border-white/20 transition-all duration-300 overflow-hidden hover:shadow-lg hover:shadow-purple-500/10 ${
+              !task.is_active ? "opacity-50" : ""
+            }`}
             style={{
               animation: `fadeIn 0.5s ease-out ${index * 0.05}s both`,
             }}
@@ -177,6 +194,20 @@ export function TaskList({ tasks, todayResponses }: TaskListProps) {
                     </Button>
                   </LogTaskDialog>
 
+                  {/* Enable/Disable quick toggle */}
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => toggleTaskActive(task.id, task.is_active)}
+                    className="text-gray-300 hover:text-white hover:bg-white/5 transition-all"
+                  >
+                    {task.is_active ? (
+                      <Trash2 className="w-4 h-4" />
+                    ) : (
+                      <CheckCircle2 className="w-4 h-4 text-green-400" />
+                    )}
+                  </Button>
+
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button 
@@ -195,12 +226,12 @@ export function TaskList({ tasks, todayResponses }: TaskListProps) {
                         <Edit className="w-4 h-4 mr-2" />
                         Edit
                       </DropdownMenuItem>
-                      <DropdownMenuItem 
-                        onClick={() => deleteTask(task.id)} 
+                      <DropdownMenuItem
+                        onClick={() => toggleTaskActive(task.id, task.is_active)}
                         className="cursor-pointer hover:bg-red-500/10 text-red-400 hover:text-red-300 transition-colors"
                       >
                         <Trash2 className="w-4 h-4 mr-2" />
-                        Delete
+                        {task.is_active ? "Disable" : "Enable"}
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>

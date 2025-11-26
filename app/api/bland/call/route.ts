@@ -120,14 +120,15 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Update call log with Bland.ai call ID
+    // Update call log with Bland.ai call ID (store in provider_call_id for robust matching)
     await supabase
-      .from("call_logs")
+      .from('call_logs')
       .update({
-        call_status: "initiated",
+        call_status: 'initiated',
         started_at: new Date().toISOString(),
+        provider_call_id: blandData?.call_id || null,
       })
-      .eq("id", callLog.id)
+      .eq('id', callLog.id)
 
     return NextResponse.json({
       success: true,

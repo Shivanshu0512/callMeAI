@@ -1,8 +1,7 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
-import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 
 interface CallLiveLogsProps {
@@ -12,23 +11,27 @@ interface CallLiveLogsProps {
 export function CallLiveLogs({ callId }: CallLiveLogsProps) {
 	const [callLog, setCallLog] = useState<any | null>(null)
 	const [lines, setLines] = useState<string[]>([])
-	const [analysis, setAnalysis] = useState<any | null>(null)
-	const [loadingAnalysis, setLoadingAnalysis] = useState(false)
+	const analyzedRef = useRef<Record<string, boolean>>({})
 
 	useEffect(() => {
 		const supabase = createClient()
 
-		// Fetch initial call log
+		// Fetch initial call log and call events
 		;(async () => {
-			const { data } = await supabase.from("call_logs").select("*").eq("id", callId).single()
-			if (data) {
-				setCallLog(data)
-				setLines((data.call_transcript || "").split(/\n+/).filter(Boolean))
+			const [{ data: callData }, { data: eventsData }] = await Promise.all([
+				supabase.from("call_logs").select("*").eq("id", callId).single(),
+				supabase.from("call_log_events").select("*").eq("call_id", callId).order("created_at", { ascending: true }),
+			])
+			if (callData?.data) {
+				setCallLog(callData.data)
+			}
+			if (eventsData) {
+				setLines((eventsData || []).map((e: any) => e.text).filter(Boolean))
 			}
 		})()
 
-		// Subscribe to updates for this call
-		const channel = supabase
+		// Subscribe to call_logs updates (status changes)
+		const logChannel = supabase
 			.channel("public:call_logs")
 			.on(
 				"postgres_changes",
@@ -36,38 +39,54 @@ export function CallLiveLogs({ callId }: CallLiveLogsProps) {
 				(payload: any) => {
 					const newRow = payload.new
 					setCallLog(newRow)
-					setLines((newRow.call_transcript || "").split(/\n+/).filter(Boolean))
+				}
+			)
+			.subscribe()
+
+		// Subscribe to new call_log_events for streaming transcript
+		const eventsChannel = supabase
+			.channel("public:call_log_events")
+			.on(
+				"postgres_changes",
+				{ event: "INSERT", schema: "public", table: "call_log_events", filter: `call_id=eq.${callId}` },
+				(payload: any) => {
+					const newRow = payload.new
+					setLines((prev) => [...prev, newRow.text])
 				}
 			)
 			.subscribe()
 
 		return () => {
 			try {
-				channel.unsubscribe()
+				logChannel.unsubscribe()
+				eventsChannel.unsubscribe()
 			} catch (e) {
 				// ignore
 			}
 		}
 	}, [callId])
 
-	const runAnalysis = async () => {
+	// Auto-run analysis once when call completes (background only)
+	useEffect(() => {
 		if (!callLog) return
-		setLoadingAnalysis(true)
-		setAnalysis(null)
-		try {
-			const res = await fetch("/api/calls/analyze", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ callId }),
-			})
-			const data = await res.json()
-			setAnalysis(data)
-		} catch (err) {
-			setAnalysis({ error: "Analysis failed" })
-		} finally {
-			setLoadingAnalysis(false)
+		if (callLog.call_status === "completed" && !analyzedRef.current[callLog.id]) {
+			analyzedRef.current[callLog.id] = true
+			// fire-and-forget analysis endpoint to persist task_responses
+			;(async () => {
+				try {
+					await fetch('/api/calls/analyze', {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({ callId: callLog.id }),
+					})
+				} catch (e) {
+					// ignore
+				}
+			})()
 		}
-	}
+	}, [callLog])
+
+	// analysis now runs automatically in background when call completes
 
 	return (
 		<div className="space-y-4">
@@ -90,43 +109,9 @@ export function CallLiveLogs({ callId }: CallLiveLogsProps) {
 					)}
 				</div>
 
-				<div className="mt-3 flex items-center justify-end space-x-2">
-					<Button onClick={runAnalysis} disabled={loadingAnalysis || !callLog} size="sm">
-						{loadingAnalysis ? "Analyzing…" : "Analyze Transcript"}
-					</Button>
-				</div>
+				{/* Analysis is now automatic on call completion; manual button removed */}
 			</div>
 
-			{analysis && (
-				<div className="rounded-xl border border-white/10 bg-gradient-to-br from-white/5 to-white/3 p-4">
-					<h4 className="font-semibold text-white mb-2">Analysis</h4>
-					{analysis.error ? (
-						<p className="text-red-400">{analysis.error}</p>
-					) : (
-						<div className="space-y-2 text-sm text-gray-200">
-							<p className="text-gray-300">Detected task responses:</p>
-							{analysis.results && analysis.results.length > 0 ? (
-								<ul className="list-disc list-inside">
-									{analysis.results.map((r: any) => (
-										<li key={r.task_id} className="flex items-center justify-between">
-											<div>
-												<div className="font-medium">{r.task_title}</div>
-												<div className="text-xs text-gray-400">Inferred: {r.inferred_text}</div>
-											</div>
-											<div className="text-right">
-												<div className={`font-semibold ${r.completed ? "text-green-400" : "text-yellow-300"}`}>{r.completed ? "Completed" : "Not completed"}</div>
-												{typeof r.response_value === "number" && <div className="text-xs text-gray-400">Value: {r.response_value}</div>}
-											</div>
-										</li>
-									))}
-								</ul>
-							) : (
-								<p className="text-gray-400">No actionable responses detected.</p>
-							)}
-						</div>
-					)}
-				</div>
-			)}
 		</div>
 	)
 }
