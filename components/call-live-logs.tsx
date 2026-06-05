@@ -71,7 +71,7 @@ export function CallLiveLogs({ callId }: CallLiveLogsProps) {
 		if (!callLog) return
 		if (callLog.call_status === "completed" && !analyzedRef.current[callLog.id]) {
 			analyzedRef.current[callLog.id] = true
-			// fire-and-forget analysis endpoint to persist task_responses
+			// fire-and-forget analysis endpoint
 			;(async () => {
 				try {
 					await fetch('/api/calls/analyze', {

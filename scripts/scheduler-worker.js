@@ -15,7 +15,10 @@
 // Load .env.local for standalone script runs (so node ./scripts/scheduler-worker.js works)
 try {
   const path = require('path')
-  const dotenvPath = path.resolve(process.cwd(), '.env.local')
+  const fs = require('fs')
+  const localPath = path.resolve(process.cwd(), '.env.local')
+  const defaultPath = path.resolve(process.cwd(), '.env')
+  const dotenvPath = fs.existsSync(localPath) ? localPath : defaultPath
   require('dotenv').config({ path: dotenvPath })
 } catch (e) {
   // ignore if dotenv not available
@@ -107,6 +110,45 @@ async function triggerCall(schedule) {
   }
 }
 
+// Pull transcripts for completed calls directly from Bland.ai.
+// Bland's completion webhook can't reach localhost in dev, so we poll instead.
+async function syncTranscripts() {
+  if (!process.env.BLAND_API_KEY) return
+  try {
+    const { data: pending } = await supabase
+      .from('call_logs')
+      .select('id, user_id, provider_call_id')
+      .not('provider_call_id', 'is', null)
+      .or('call_status.neq.completed,has_transcript.eq.false')
+      .limit(20)
+
+    for (const log of pending || []) {
+      const res = await fetch(`https://api.bland.ai/v1/calls/${log.provider_call_id}`, {
+        headers: { authorization: process.env.BLAND_API_KEY },
+      })
+      if (!res.ok) continue
+      const detail = await res.json()
+      if (detail.status !== 'completed') continue
+
+      const transcript = (detail.concatenated_transcript || '').trim()
+      await supabase
+        .from('call_logs')
+        .update({
+          call_status: 'completed',
+          call_duration: Math.round((detail.call_length || 0) * 60),
+          call_transcript: transcript || null,
+          has_transcript: !!transcript,
+          ended_at: detail.end_at || detail.updated_at || new Date().toISOString(),
+          recording_url: detail.recording_url || null,
+        })
+        .eq('id', log.id)
+      console.log(`Synced transcript for call ${log.id} (${transcript.length} chars)`)
+    }
+  } catch (e) {
+    console.error('Transcript sync error', e)
+  }
+}
+
 async function poll() {
   const nowUtc = DateTime.utc()
   try {
@@ -133,6 +175,8 @@ async function poll() {
         await triggerCall(s)
       }
     }
+
+    await syncTranscripts()
   } catch (e) {
     console.error('Poll error', e)
   }

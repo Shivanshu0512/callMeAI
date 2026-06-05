@@ -123,3 +123,98 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Landing page custom animations */
+@keyframes orbit {
+  0% { transform: translate(0, 0) scale(1); }
+  25% { transform: translate(100px, -50px) scale(1.1); }
+  50% { transform: translate(-50px, 100px) scale(0.9); }
+  75% { transform: translate(-100px, -100px) scale(1.05); }
+  100% { transform: translate(0, 0) scale(1); }
+}
+
+@keyframes pulse-ring {
+  0% { transform: scale(0.8); opacity: 0.6; }
+  100% { transform: scale(2.5); opacity: 0; }
+}
+
+@keyframes pulse-ring-lg {
+  0% { transform: scale(0.8); opacity: 0.3; }
+  100% { transform: scale(3.5); opacity: 0; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-12px); }
+}
+
+@keyframes dot-pulse {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 1; }
+}
+
+@keyframes spin-slow {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes spin-reverse {
+  0% { transform: rotate(360deg); }
+  100% { transform: rotate(0deg); }
+}
+
+@keyframes waveform {
+  0%, 100% { height: 4px; }
+  50% { height: 24px; }
+}
+
+@keyframes glow-pulse {
+  0%, 100% { opacity: 0.4; filter: blur(40px); }
+  50% { opacity: 0.8; filter: blur(60px); }
+}
+
+@keyframes call-breathe {
+  0%, 100% { box-shadow: 0 0 30px oklch(0.55 0.25 280 / 0.15), 0 0 60px oklch(0.55 0.25 280 / 0.05); }
+  50% { box-shadow: 0 0 50px oklch(0.55 0.25 280 / 0.3), 0 0 100px oklch(0.55 0.25 280 / 0.1); }
+}
+
+.animate-orbit {
+  animation: orbit 20s ease-in-out infinite;
+}
+
+.animate-pulse-ring {
+  animation: pulse-ring 2s ease-out infinite;
+}
+
+.animate-pulse-ring-lg {
+  animation: pulse-ring-lg 3s ease-out infinite;
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+.animate-dot-pulse {
+  animation: dot-pulse 1.5s ease-in-out infinite;
+}
+
+.animate-spin-slow {
+  animation: spin-slow 20s linear infinite;
+}
+
+.animate-spin-reverse {
+  animation: spin-reverse 25s linear infinite;
+}
+
+.animate-glow-pulse {
+  animation: glow-pulse 4s ease-in-out infinite;
+}
+
+.animate-call-breathe {
+  animation: call-breathe 3s ease-in-out infinite;
+}
+
+.dot-grid {
+  background-image: radial-gradient(circle, oklch(0.3 0.01 270) 1px, transparent 1px);
+  background-size: 32px 32px;
+}

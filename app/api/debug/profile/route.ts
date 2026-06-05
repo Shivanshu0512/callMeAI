@@ -20,12 +20,7 @@ export async function GET() {
       .select("*")
       .eq("user_id", user.id)
 
-    const { data: tasks } = await supabase
-      .from("tasks")
-      .select("*")
-      .eq("user_id", user.id)
-
-    return NextResponse.json({ profile, schedules, tasks })
+    return NextResponse.json({ profile, schedules })
   } catch (err: any) {
     return NextResponse.json({ error: String(err) }, { status: 500 })
   }

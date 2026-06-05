@@ -150,7 +150,7 @@ CREATE POLICY "call_log_events_select_own" ON public.call_log_events FOR SELECT 
 );
 CREATE POLICY "call_log_events_insert_own" ON public.call_log_events FOR INSERT WITH CHECK (
   EXISTS (
-    SELECT 1 FROM public.call_logs cl WHERE cl.id = new.call_id AND auth.uid() = cl.user_id
+    SELECT 1 FROM public.call_logs cl WHERE cl.id = call_log_events.call_id AND auth.uid() = cl.user_id
   )
 );
 CREATE POLICY "call_log_events_delete_own" ON public.call_log_events FOR DELETE USING (

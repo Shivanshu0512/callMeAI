@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
-import { Download, Calendar, Target, TrendingUp, CheckCircle2, AlertTriangle, Info, Award } from "lucide-react"
+import { Download, Calendar, Target, TrendingUp, CheckCircle2, AlertTriangle, Info, Award, MessageSquare, Hash, ListChecks, Lightbulb, CircleDashed, CircleSlash, CircleDot } from "lucide-react"
 
 interface WeeklyReport {
   id: string
@@ -28,6 +28,14 @@ export function WeeklyReportDialog({ report, open, onOpenChange }: WeeklyReportD
   const dailyBreakdown = data?.dailyBreakdown || []
   const categoryStats = data?.categoryStats || []
   const insights = data?.insights || []
+  const analysis = data?.conversationAnalysis
+
+  const commitmentStatusConfig: Record<string, { label: string; className: string; icon: any }> = {
+    fulfilled: { label: "Fulfilled", className: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400", icon: CheckCircle2 },
+    partially_fulfilled: { label: "Partial", className: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400", icon: CircleDot },
+    not_fulfilled: { label: "Not fulfilled", className: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400", icon: CircleSlash },
+    pending: { label: "Pending", className: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300", icon: CircleDashed },
+  }
 
   const formatDateRange = (startDate: string, endDate: string) => {
     const start = new Date(startDate)
@@ -208,6 +216,112 @@ export function WeeklyReportDialog({ report, open, onOpenChange }: WeeklyReportD
               </CardContent>
             </Card>
           </div>
+
+          {/* Conversation Analysis */}
+          {analysis && (
+            <>
+              {/* Week Summary */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center space-x-2">
+                    <MessageSquare className="w-5 h-5" />
+                    <span>Week in Review</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-gray-700 dark:text-gray-300">{analysis.summary}</p>
+                </CardContent>
+              </Card>
+
+              {/* Facts & Numbers */}
+              {(analysis.facts?.length > 0 || analysis.numbers?.length > 0) && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center space-x-2">
+                      <Hash className="w-5 h-5" />
+                      <span>Facts & Numbers From Your Calls</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      {(analysis.numbers || []).map((n: any, i: number) => (
+                        <div key={`n-${i}`} className="flex items-start gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-800">
+                          <Badge variant="secondary" className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 flex-shrink-0">{n.value}</Badge>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm text-gray-700 dark:text-gray-300">{n.context}</p>
+                            <p className="text-xs text-gray-500 mt-0.5">{n.date}</p>
+                          </div>
+                        </div>
+                      ))}
+                      {(analysis.facts || []).map((f: any, i: number) => (
+                        <div key={`f-${i}`} className="flex items-start gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-800">
+                          <Info className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm text-gray-700 dark:text-gray-300">{f.text}</p>
+                            <p className="text-xs text-gray-500 mt-0.5">{f.date}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Commitments */}
+              {analysis.commitments?.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center space-x-2">
+                      <ListChecks className="w-5 h-5" />
+                      <span>Commitments Tracker</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {analysis.commitments.map((c: any, i: number) => {
+                        const status = commitmentStatusConfig[c.status] || commitmentStatusConfig.pending
+                        const StatusIcon = status.icon
+                        return (
+                          <div key={i} className="p-4 rounded-lg border border-gray-200 dark:border-gray-700">
+                            <div className="flex items-start justify-between gap-3">
+                              <p className="text-sm font-medium text-gray-900 dark:text-white">"{c.text}"</p>
+                              <Badge variant="secondary" className={`${status.className} flex-shrink-0 flex items-center gap-1`}>
+                                <StatusIcon className="w-3 h-3" />
+                                {status.label}
+                              </Badge>
+                            </div>
+                            <p className="text-xs text-gray-500 mt-2">Made on {c.madeOn}{c.evidence ? ` — ${c.evidence}` : ""}</p>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Suggestions */}
+              {analysis.suggestions?.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center space-x-2">
+                      <Lightbulb className="w-5 h-5" />
+                      <span>Suggestions For Next Week</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      {analysis.suggestions.map((s: string, i: number) => (
+                        <div key={i} className="flex items-start gap-3 p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+                          <Lightbulb className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+                          <p className="text-sm text-gray-700 dark:text-gray-300">{s}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </>
+          )}
 
           {/* Category Performance */}
           {categoryStats.length > 0 && (

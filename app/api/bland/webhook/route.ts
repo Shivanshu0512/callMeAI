@@ -149,6 +149,7 @@ async function processWebhook(payload: any, supabase: any) {
               call_duration: duration || 0,
               call_transcript: finalTranscript || transcript || '',
               recording_url: recording_url || call_id || null,
+              has_transcript: !!(finalTranscript || transcript),
             })
             .eq('id', callLog.id)
 
@@ -186,29 +187,3 @@ async function processWebhook(payload: any, supabase: any) {
   }
 }
 
-async function parseAndSaveResponses(supabase: any, userId: string, transcript: string) {
-  try {
-    // Get user's tasks
-    const { data: tasks } = await supabase.from("tasks").select("id, title").eq("user_id", userId).eq("is_active", true)
-
-    if (!tasks || tasks.length === 0) return
-
-    // Simple parsing: look for task titles in transcript and mark as completed
-    // This is a basic implementation; you can enhance it with NLP/AI for better accuracy
-    const today = new Date().toISOString().split("T")[0]
-
-    for (const task of tasks) {
-      if (transcript.toLowerCase().includes(task.title.toLowerCase())) {
-        // Task was mentioned in the call, assume they provided a response
-        await supabase.from("task_responses").insert({
-          user_id: userId,
-          task_id: task.id,
-          response_text: `Responded to during call`,
-          response_date: today,
-        })
-      }
-    }
-  } catch (error) {
-    console.error("Error parsing responses:", error)
-  }
-}

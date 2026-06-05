@@ -41,9 +41,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "No phone number found in user profile. Please add your mobile number in settings." }, { status: 400 })
     }
 
-    // Get user tasks for the call
-    const { data: tasks } = await supabase.from("tasks").select("*").eq("user_id", user.id).eq("is_active", true)
-
     // Create call log entry
     const { data: callLog, error: callLogError } = await supabase
       .from("call_logs")
@@ -61,7 +58,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate conversation script for Bland.ai
-    const conversationScript = generateConversationScript(tasks || [], schedule.name)
+    const conversationScript = generateConversationScript(schedule.name, schedule.topic)
 
     // Call Bland.ai API to initiate the phone call
     const blandApiKey = process.env.BLAND_API_KEY
@@ -75,7 +72,7 @@ export async function POST(request: NextRequest) {
       task: conversationScript,
       language: "en",
       temperature: 0.7,
-      max_duration: 300,
+      max_duration: 180,
       webhook_url: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/bland/webhook`,
     }
 
@@ -143,31 +140,16 @@ export async function POST(request: NextRequest) {
   }
 }
 
-function generateConversationScript(tasks: any[], scheduleName: string): string {
-  // Build a task checklist prompt for Bland.ai to ask the user about
-  const tasksList = tasks
-    .map((task, index) => {
-      if (task.target_value && task.unit) {
-        return `${index + 1}. "${task.title}": Target is ${task.target_value} ${task.unit}. Ask how many ${task.unit} they completed today.`
-      } else {
-        return `${index + 1}. "${task.title}": Ask if they made progress on this goal today.`
-      }
-    })
-    .join("\n")
+function generateConversationScript(scheduleName: string, topic?: string): string {
+  const purpose = topic && topic.trim() ? topic.trim() : scheduleName
 
-  return `You are CallMeAI, a supportive accountability partner. The user scheduled a call named "${scheduleName}".
+  return `You are CallMeAI, a brief accountability check-in agent. The user scheduled this call for: "${purpose}".
 
-Your goal is to check in on their daily goals and build lasting habits. Be warm, encouraging, and concise.
+Keep the call short and crisp — under 2 minutes. Exactly this flow:
+1. Greet briefly: one short sentence introducing yourself as CallMeAI and why you're calling.
+2. Ask ONE direct question about their progress on "${purpose}". Listen. One short acknowledgment — do not lecture or give long advice.
+3. Ask ONE closing question: "Anything else you'd like to share or discuss?" Listen briefly.
+4. Thank them in one sentence and end the call.
 
-Here are their tasks to ask about:
-${tasksList}
-
-Instructions:
-1. Greet them warmly and introduce yourself as CallMeAI
-2. Ask about each task one by one
-3. Listen to their responses and be encouraging
-4. After all tasks, provide a brief motivational message
-5. Thank them and end the call
-
-Keep the conversation natural and supportive. This should take 3-5 minutes total.`
+Rules: no rambling, no repeated questions, no motivational speeches. Short sentences. If the user is busy or quiet, wrap up immediately and end the call politely.`
 }

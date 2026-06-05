@@ -9,7 +9,8 @@ import { Label } from "@/components/ui/label"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState, useEffect } from "react"
-import { Target, ArrowRight, Check } from "lucide-react"
+import { Target, ArrowRight, Loader2, Phone, BarChart3 } from "lucide-react"
+import { cn } from "@/lib/utils"
 
 export default function SignupPage() {
   const [email, setEmail] = useState("")
@@ -18,13 +19,11 @@ export default function SignupPage() {
   const [confirmPassword, setConfirmPassword] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
-  const [scrollY, setScrollY] = useState(0)
+  const [mounted, setMounted] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
-    const handleScroll = () => setScrollY(window.scrollY)
-    window.addEventListener("scroll", handleScroll)
-    return () => window.removeEventListener("scroll", handleScroll)
+    setMounted(true)
   }, [])
 
   const handleSignup = async (e: React.FormEvent) => {
@@ -40,18 +39,33 @@ export default function SignupPage() {
     }
 
     try {
-      const { error } = await supabase.auth.signUp({
+      const signupResponse = await fetch("/api/auth/signup", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email,
+          password,
+          fullName,
+        }),
+      })
+
+      const signupResult = await signupResponse.json()
+
+      if (!signupResponse.ok) {
+        throw new Error(signupResult.error || "Unable to create account")
+      }
+
+      const { error: signInError } = await supabase.auth.signInWithPassword({
         email,
         password,
-        options: {
-          emailRedirectTo: process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL || `${window.location.origin}/dashboard`,
-          data: {
-            full_name: fullName,
-          },
-        },
       })
-      if (error) throw error
-      router.push("/auth/check-email")
+
+      if (signInError) throw signInError
+
+      router.push("/dashboard")
+      router.refresh()
     } catch (error: unknown) {
       setError(error instanceof Error ? error.message : "An error occurred")
     } finally {
@@ -60,50 +74,36 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white overflow-hidden flex items-center justify-center relative">
-      {/* Animated Background */}
+    <div className="min-h-screen bg-[oklch(0.09_0.005_270)] text-white overflow-hidden flex items-center justify-center relative">
+      {/* Background */}
       <div className="fixed inset-0 z-0">
-        <div className="absolute inset-0 bg-gradient-to-br from-purple-900/20 via-black to-cyan-900/20" />
-        <div 
-          className="absolute top-1/4 -left-1/3 w-96 h-96 bg-gradient-to-br from-purple-500/15 to-transparent rounded-full blur-3xl opacity-40" 
-          style={{ transform: `translateY(${scrollY * 0.05}px)` }}
-        />
-        <div 
-          className="absolute -bottom-1/4 right-1/3 w-96 h-96 bg-gradient-to-bl from-cyan-500/15 to-transparent rounded-full blur-3xl opacity-40" 
-          style={{ transform: `translateY(${scrollY * -0.05}px)` }}
-        />
-        <div 
-          className="absolute top-1/2 right-1/4 w-64 h-64 bg-gradient-to-br from-pink-500/10 to-transparent rounded-full blur-3xl opacity-30" 
-          style={{ transform: `translateY(${scrollY * 0.03}px)` }}
-        />
+        <div className="dot-grid absolute inset-0 opacity-30" />
+        <div className="animate-orbit absolute top-1/4 left-1/3 w-[600px] h-[600px] bg-[oklch(0.45_0.2_280)] rounded-full blur-[180px] opacity-[0.07]" />
       </div>
 
-      <div className="relative z-10 w-full max-w-md px-4">
-        {/* Header */}
-        <div className="mb-12 text-center">
-          <div className="inline-flex items-center justify-center mb-6">
-            <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-cyan-500 rounded-lg flex items-center justify-center">
-              <Target className="w-7 h-7 text-white" />
-            </div>
+      <div
+        className={cn(
+          "relative z-10 w-full max-w-sm px-4 py-12 transition-all duration-700",
+          mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
+        )}
+      >
+        {/* Logo */}
+        <Link href="/" className="flex items-center justify-center gap-2.5 mb-12">
+          <div className="w-8 h-8 bg-[oklch(0.55_0.25_280)] rounded-lg flex items-center justify-center">
+            <Target className="w-4 h-4 text-white" />
           </div>
-          <h1 className="text-4xl md:text-5xl font-black mb-2">
-            <span className="bg-gradient-to-r from-purple-400 via-pink-400 to-cyan-400 bg-clip-text text-transparent">
-              CallMeAI
-            </span>
-          </h1>
-          <p className="text-gray-400 text-lg">Start Your Accountability Journey</p>
-        </div>
+          <span className="text-lg font-semibold text-white">CallMeAI</span>
+        </Link>
 
-        {/* Signup Card */}
-        <div className="rounded-2xl border border-white/20 bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-sm p-8 shadow-2xl">
-          <h2 className="text-2xl font-black text-white mb-2">Get Started</h2>
-          <p className="text-gray-400 mb-8">Create your account in seconds</p>
+        {/* Form Card */}
+        <div className="rounded-2xl border border-white/[0.06] bg-[oklch(0.13_0.008_270)]/80 backdrop-blur-xl p-8">
+          <h1 className="text-2xl font-semibold tracking-tight text-white mb-1">Create your account</h1>
+          <p className="text-white/35 text-sm mb-8">Start your accountability journey</p>
 
-          <form onSubmit={handleSignup} className="space-y-5">
-            {/* Full Name Field */}
+          <form onSubmit={handleSignup} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="fullName" className="text-sm font-semibold text-white">
-                Full Name
+              <Label htmlFor="fullName" className="text-xs font-medium text-white/50">
+                Full name
               </Label>
               <Input
                 id="fullName"
@@ -112,29 +112,27 @@ export default function SignupPage() {
                 required
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
-                className="h-12 bg-white/5 border-white/20 text-white placeholder:text-gray-500 focus:border-purple-400 focus:ring-purple-400/20 transition-all"
+                className="h-11 bg-white/[0.04] border-white/[0.08] text-white placeholder:text-white/20 focus:border-[oklch(0.55_0.25_280)] focus:ring-[oklch(0.55_0.25_280)]/20 rounded-xl transition-all"
               />
             </div>
 
-            {/* Email Field */}
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-sm font-semibold text-white">
-                Email Address
+              <Label htmlFor="email" className="text-xs font-medium text-white/50">
+                Email
               </Label>
               <Input
                 id="email"
                 type="email"
-                placeholder="your@email.com"
+                placeholder="you@example.com"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="h-12 bg-white/5 border-white/20 text-white placeholder:text-gray-500 focus:border-purple-400 focus:ring-purple-400/20 transition-all"
+                className="h-11 bg-white/[0.04] border-white/[0.08] text-white placeholder:text-white/20 focus:border-[oklch(0.55_0.25_280)] focus:ring-[oklch(0.55_0.25_280)]/20 rounded-xl transition-all"
               />
             </div>
 
-            {/* Password Field */}
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-sm font-semibold text-white">
+              <Label htmlFor="password" className="text-xs font-medium text-white/50">
                 Password
               </Label>
               <Input
@@ -144,14 +142,13 @@ export default function SignupPage() {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="h-12 bg-white/5 border-white/20 text-white placeholder:text-gray-500 focus:border-purple-400 focus:ring-purple-400/20 transition-all"
+                className="h-11 bg-white/[0.04] border-white/[0.08] text-white placeholder:text-white/20 focus:border-[oklch(0.55_0.25_280)] focus:ring-[oklch(0.55_0.25_280)]/20 rounded-xl transition-all"
               />
             </div>
 
-            {/* Confirm Password Field */}
             <div className="space-y-2">
-              <Label htmlFor="confirmPassword" className="text-sm font-semibold text-white">
-                Confirm Password
+              <Label htmlFor="confirmPassword" className="text-xs font-medium text-white/50">
+                Confirm password
               </Label>
               <Input
                 id="confirmPassword"
@@ -160,87 +157,69 @@ export default function SignupPage() {
                 required
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="h-12 bg-white/5 border-white/20 text-white placeholder:text-gray-500 focus:border-purple-400 focus:ring-purple-400/20 transition-all"
+                className="h-11 bg-white/[0.04] border-white/[0.08] text-white placeholder:text-white/20 focus:border-[oklch(0.55_0.25_280)] focus:ring-[oklch(0.55_0.25_280)]/20 rounded-xl transition-all"
               />
             </div>
 
-            {/* Error Message */}
             {error && (
-              <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm font-medium">
+              <div className="p-3 rounded-xl bg-red-500/[0.08] border border-red-500/20 text-red-400 text-sm">
                 {error}
               </div>
             )}
 
-            {/* Create Account Button */}
             <Button
               type="submit"
-              className="w-full h-12 bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-500 hover:to-cyan-500 text-white font-semibold transform hover:scale-105 transition-all rounded-xl flex items-center justify-center gap-2"
+              className="w-full h-11 bg-[oklch(0.55_0.25_280)] hover:bg-[oklch(0.60_0.25_280)] text-white font-medium rounded-xl border-0 transition-all"
               disabled={isLoading}
             >
               {isLoading ? (
                 <>
-                  <span className="inline-block animate-spin">⚡</span>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                   Creating account...
                 </>
               ) : (
                 <>
-                  Create Account
-                  <ArrowRight className="w-4 h-4" />
+                  Create account
+                  <ArrowRight className="w-4 h-4 ml-2" />
                 </>
               )}
             </Button>
           </form>
 
-          {/* Divider */}
-          <div className="my-8 flex items-center">
-            <div className="flex-1 h-px bg-white/10" />
-            <span className="px-3 text-sm text-gray-500">Already signed up?</span>
-            <div className="flex-1 h-px bg-white/10" />
+          <div className="my-6 flex items-center">
+            <div className="flex-1 h-px bg-white/[0.06]" />
+            <span className="px-3 text-xs text-white/20">or</span>
+            <div className="flex-1 h-px bg-white/[0.06]" />
           </div>
 
-          {/* Sign In Link */}
-          <div className="text-center">
-            <p className="text-gray-400 mb-4">
-              Sign in to your existing account
-            </p>
-            <Link href="/auth/login">
-              <Button 
-                type="button"
-                variant="ghost"
-                className="w-full h-12 border border-white/20 hover:border-cyan-400/50 hover:bg-white/5 text-white font-semibold rounded-xl transition-all"
-              >
-                Sign In
-              </Button>
-            </Link>
-          </div>
+          <Link href="/auth/login">
+            <Button
+              type="button"
+              variant="ghost"
+              className="w-full h-11 border border-white/[0.08] hover:border-white/[0.15] hover:bg-white/[0.03] text-white/60 hover:text-white font-medium rounded-xl transition-all"
+            >
+              Sign in instead
+            </Button>
+          </Link>
         </div>
 
-        {/* Features */}
-        <div className="mt-12 grid grid-cols-3 gap-4">
-          <div className="text-center">
-            <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-purple-500/20 mb-2">
-              <Check className="w-5 h-5 text-purple-400" />
+        {/* Feature hints */}
+        <div className="mt-8 flex justify-center gap-6">
+          {[
+            { icon: Phone, label: "AI Calls" },
+            { icon: Target, label: "Goal Tracking" },
+            { icon: BarChart3, label: "Smart Reports" },
+          ].map((item, i) => (
+            <div key={i} className="flex items-center gap-2 text-white/20">
+              <item.icon className="w-3.5 h-3.5" />
+              <span className="text-xs">{item.label}</span>
             </div>
-            <p className="text-xs text-gray-400">AI Accountability</p>
-          </div>
-          <div className="text-center">
-            <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-cyan-500/20 mb-2">
-              <Check className="w-5 h-5 text-cyan-400" />
-            </div>
-            <p className="text-xs text-gray-400">Daily Check-ins</p>
-          </div>
-          <div className="text-center">
-            <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-pink-500/20 mb-2">
-              <Check className="w-5 h-5 text-pink-400" />
-            </div>
-            <p className="text-xs text-gray-400">Progress Tracking</p>
-          </div>
+          ))}
         </div>
 
-        {/* Footer Info */}
-        <div className="mt-8 text-center text-xs text-gray-500">
-          <p>By signing up, you agree to our Terms of Service and Privacy Policy</p>
-        </div>
+        <p className="mt-6 text-center text-xs text-white/15">
+          By signing up, you agree to our Terms of Service and Privacy Policy
+        </p>
       </div>
     </div>
   )

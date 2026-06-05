@@ -2,13 +2,11 @@
 
 import React, { useEffect, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
-import { CallLiveLogs } from "@/components/call-live-logs"
-import { Button } from "@/components/ui/button"
+import { Phone, CheckCircle, XCircle, Loader2, Clock } from "lucide-react"
 
 export function CallLogsList() {
   const [calls, setCalls] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const [selectedCallId, setSelectedCallId] = useState<string | null>(null)
 
   useEffect(() => {
     const supabase = createClient()
@@ -24,9 +22,10 @@ export function CallLogsList() {
           return
         }
 
+        // Metadata only — transcripts stay in the backend for weekly analysis
         const { data } = await supabase
           .from("call_logs")
-          .select("*")
+          .select("id, call_status, call_duration, scheduled_at, started_at, ended_at, schedule_id")
           .eq("user_id", user.id)
           .order("scheduled_at", { ascending: false })
 
@@ -62,51 +61,84 @@ export function CallLogsList() {
 
     return () => {
       mounted = false
-      try {
-        channel.unsubscribe()
-      } catch (e) {
-        // ignore
-      }
+      try { channel.unsubscribe() } catch (e) { /* ignore */ }
     }
   }, [])
 
+  const getStatusConfig = (status: string) => {
+    switch (status) {
+      case "completed":
+        return { icon: CheckCircle, color: "text-green-400", bg: "bg-green-500/10", label: "Completed" }
+      case "failed":
+        return { icon: XCircle, color: "text-red-400", bg: "bg-red-500/10", label: "Failed" }
+      case "in_progress":
+        return { icon: Loader2, color: "text-yellow-400", bg: "bg-yellow-500/10", label: "In Progress", spin: true }
+      default:
+        return { icon: Clock, color: "text-white/40", bg: "bg-white/[0.04]", label: status || "Unknown" }
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="text-center py-8">
+        <Loader2 className="w-5 h-5 text-white/20 animate-spin mx-auto" />
+      </div>
+    )
+  }
+
+  if (calls.length === 0) {
+    return (
+      <div className="text-center py-12">
+        <div className="w-14 h-14 rounded-full bg-[oklch(0.55_0.25_280)]/10 border border-[oklch(0.55_0.25_280)]/15 flex items-center justify-center mx-auto mb-4">
+          <Phone className="w-6 h-6 text-[oklch(0.75_0.18_280)]" />
+        </div>
+        <p className="text-white/50 font-medium mb-1">No calls yet</p>
+        <p className="text-white/25 text-sm">Calls will appear here once your schedules trigger</p>
+      </div>
+    )
+  }
+
   return (
-    <div>
-      <div className="rounded-2xl border border-white/20 bg-gradient-to-br from-white/10 to-white/5 p-6 mb-6">
-        <h3 className="text-xl font-black text-white mb-4">All Calls</h3>
+    <div className="space-y-2">
+      {calls.map((call) => {
+        const config = getStatusConfig(call.call_status)
+        const StatusIcon = config.icon
+        const duration = call.call_duration ? `${Math.round(call.call_duration / 60)}m` : null
 
-        {loading ? (
-          <p className="text-gray-400">Loading calls…</p>
-        ) : calls.length === 0 ? (
-          <p className="text-gray-400">No calls yet</p>
-        ) : (
-          <div className="space-y-3 max-h-72 overflow-y-auto">
-            {calls.map((call) => (
-              <div
-                key={call.id}
-                className={`p-3 rounded-lg border ${selectedCallId === call.id ? "border-blue-400 bg-white/5" : "border-white/10"} cursor-pointer flex items-center justify-between`}
-                onClick={() => setSelectedCallId(call.id)}
-              >
-                <div>
-                  <div className="text-sm font-semibold">{new Date(call.scheduled_at).toLocaleString()}</div>
-                  <div className="text-xs text-gray-400 mt-1">{call.call_status}</div>
+        return (
+          <div key={call.id} className="p-3.5 rounded-xl border border-white/[0.06] bg-white/[0.02]">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                {/* Status icon */}
+                <div className={`w-8 h-8 rounded-lg ${config.bg} flex items-center justify-center flex-shrink-0`}>
+                  <StatusIcon className={`w-4 h-4 ${config.color} ${config.spin ? "animate-spin" : ""}`} />
                 </div>
-                <div className={`w-3 h-3 rounded-full ${call.call_status === "completed" ? "bg-green-500" : call.call_status === "failed" ? "bg-red-500" : "bg-yellow-500"}`} />
-              </div>
-            ))}
-          </div>
-        )}
 
-        {selectedCallId && (
-          <div className="mt-4">
-            <h4 className="text-sm text-gray-300 mb-2">Call Details</h4>
-            <CallLiveLogs callId={selectedCallId} />
-            <div className="mt-3">
-              <Button onClick={() => setSelectedCallId(null)} variant="outline">Close</Button>
+                {/* Details */}
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-white truncate">
+                      {new Date(call.scheduled_at).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
+                    </span>
+                    <span className="text-xs text-white/20">
+                      {new Date(call.scheduled_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className={`text-[11px] ${config.color}`}>{config.label}</span>
+                    {duration && (
+                      <>
+                        <span className="text-white/10">·</span>
+                        <span className="text-[11px] text-white/25">{duration}</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
-        )}
-      </div>
+        )
+      })}
     </div>
   )
 }

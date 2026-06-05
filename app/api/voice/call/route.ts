@@ -54,10 +54,6 @@ export async function POST(request: NextRequest) {
     // Determine the user id to operate on
     const targetUserId = schedule.user_id
 
-    // Get user's tasks for the call
-    const { data: tasks } = await supabase.from('tasks').select('*').eq('user_id', targetUserId).eq('is_active', true)
-    const taskList = tasks || []
-
     // Get user profile for voice preference and phone number
     const { data: profile } = await supabase
       .from('profiles')
@@ -91,17 +87,15 @@ export async function POST(request: NextRequest) {
     // like Twilio, Vapi, or similar to make the actual phone call
     // For now, we'll simulate the call initiation
 
-    const callScript = generateCallScript(taskList, profile?.preferred_voice || "alloy")
+    const callScript = generateCallScript(schedule.name, schedule.topic, profile?.preferred_voice || "alloy")
 
     // Simulate call initiation with streaming partial transcripts.
-    // In a real implementation, your voice provider webhook would write partial transcripts
-    // and final transcripts to the `call_logs` row or a `call_log_events` table.
     const simulatedChunks = [
-      `Hi ${profile.full_name || "there"}, this is CallMeAI checking in about your tasks.`,
-      `First task: ${taskList[0]?.title || "(no task)"}. How did you get on today?`,
-      `Second task: ${taskList[1]?.title || "(no task)"}.`,
+      `Hi ${profile.full_name || "there"}, this is CallMeAI checking in.`,
+      `I'd like to talk about "${schedule.topic || schedule.name}". How's your progress going?`,
+      `That's great to hear. What's been the biggest challenge?`,
       `Thanks for sharing — that's helpful. Keep it up!`,
-      `Call complete. Logged your responses.`,
+      `Call complete. Great check-in today.`,
     ]
 
     // write partial transcripts at intervals to simulate streaming
@@ -113,6 +107,14 @@ export async function POST(request: NextRequest) {
           const existing = fresh?.call_transcript || ""
           const updated = existing ? `${existing}\n${chunk}` : chunk
           await supabase.from("call_logs").update({ call_transcript: updated }).eq("id", callLog.id)
+
+          // Also insert into call_log_events for structured transcript
+          await supabase.from('call_log_events').insert({
+            call_id: callLog.id,
+            speaker: idx % 2 === 0 ? 'agent' : 'user',
+            text: chunk,
+            provider_event_id: `sim_${callLog.id}_${idx}`,
+          })
         } catch (e) {
           console.error("Failed to update partial transcript", e)
         }
@@ -131,6 +133,7 @@ export async function POST(request: NextRequest) {
           ended_at: endedAt,
           call_duration: duration,
           call_transcript: finalTranscript,
+          has_transcript: true,
         }).eq('id', callLog.id)
       } catch (e) {
         console.error("Failed to finalize call log", e)
@@ -149,20 +152,14 @@ export async function POST(request: NextRequest) {
   }
 }
 
-function generateCallScript(tasks: any[], voice: string) {
-  const greeting = `Hello! This is CallMeAI. I hope you're having a great day! I'm calling to check in on your daily goals and see how you're progressing.`
+function generateCallScript(scheduleName: string, topic: string | null, voice: string) {
+  const greeting = `Hello! This is CallMeAI. I hope you're having a great day! I'm calling to check in on your progress.`
 
-  const taskQuestions = tasks
-    .map((task, index) => {
-      if (task.target_value && task.unit) {
-        return `Question ${index + 1}: For your goal "${task.title}", how many ${task.unit} have you completed today? Your target is ${task.target_value} ${task.unit}.`
-      } else {
-        return `Question ${index + 1}: How are you doing with "${task.title}" today? Have you made progress on this goal?`
-      }
-    })
-    .join("\n\n")
+  const focusArea = topic
+    ? `Let's talk about: "${topic}". How have things been going?`
+    : `This is your "${scheduleName}" check-in. What would you like to update me on today?`
 
   const closing = `Thank you for sharing your progress with me! Remember, consistency is key to building lasting habits. Keep up the great work, and I'll check in with you again soon. Have a wonderful rest of your day!`
 
-  return `${greeting}\n\n${taskQuestions}\n\n${closing}`
+  return `${greeting}\n\n${focusArea}\n\n${closing}`
 }
